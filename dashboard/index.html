@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>J.A.R.V.I.S.</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="state-booting">
+<div class="grid-bg"></div>
+<div class="scanlines"></div>
+
+<main class="hud">
+  <header class="top">
+    <div class="brand">J.A.R.V.I.S.<span id="brand-sub" data-normal="JUST A RATHER VERY INTELLIGENT SYSTEM" data-dev="DEVELOPMENT ENVIRONMENT">JUST A RATHER VERY INTELLIGENT SYSTEM</span></div>
+    <div class="controls">
+    <nav class="modes dev-toggle" aria-label="開発モード">
+      <button id="dev-btn" title="開発モード（Ctrl+Alt+V）：確認を省略して開発に集中" onclick="jarvis.requestDev()">開発</button>
+    </nav>
+    <nav class="modes" aria-label="モード">
+      <button data-mode="normal" onclick="jarvis.requestMode('normal')">通常</button>
+      <button data-mode="always" onclick="jarvis.requestMode('always')">常時会話</button>
+      <button data-mode="sleep" onclick="jarvis.requestMode('sleep')">スリープ</button>
+    </nav>
+    <nav class="mutes" aria-label="ミュート">
+      <button id="mute-mic" title="マイク：オン（押すとミュート）" aria-label="マイクのミュート" onclick="jarvis.toggleMute('mic')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/><path class="slash" d="M4 4l16 16"/></svg>
+      </button>
+      <button id="mute-speaker" title="スピーカー：オン（押すとミュート）" aria-label="スピーカーのミュート" onclick="jarvis.toggleMute('speaker')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="slash" d="M4 4l16 16"/></svg>
+      </button>
+      <button id="mute-voiceprint" title="声紋認証：オン（押すとオフ）" aria-label="声紋認証" onclick="jarvis.toggleMute('voiceprint')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h1.5M7 8v8M10 5v14M13 9v6M16 6.5v11M19 10v4M20.5 12H20"/><path class="slash" d="M4 4l16 16"/></svg>
+      </button>
+    </nav>
+    </div>
+    <div class="top-right">
+    <div class="dev-session" aria-live="off"><span class="dev-diamond">◆</span> DEV MODE <b id="dev-elapsed">00:00:00</b> <span id="dev-until" class="dev-until"></span></div>
+    <div class="stats">
+      <div class="stat"><span>CPU</span><div class="bar"><i id="s-cpu-bar"></i></div><b id="s-cpu">--</b></div>
+      <div class="stat"><span>MEM</span><div class="bar"><i id="s-mem-bar"></i></div><b id="s-mem">--</b></div>
+      <div class="stat"><span>DISK</span><div class="bar"><i id="s-disk-bar"></i></div><b id="s-disk">--</b></div>
+    </div>
+    <div class="sys"><span class="dot"></span><span id="sys-text">SYSTEM ONLINE</span></div>
+    </div>
+  </header>
+
+  <section class="panel left">
+    <div class="panel-title">TIME</div>
+    <div class="clock-row">
+      <div id="clock" class="clock">--:--</div>
+      <div id="seconds" class="seconds">--</div>
+    </div>
+    <div id="date" class="date"></div>
+
+    <div class="dev-only dev-project" id="dev-project">
+      <div class="panel-title spaced">PROJECT <span id="dev-proj-hint" class="hint"></span></div>
+      <div id="dev-proj-body" class="proj-body"><div class="empty">読み込み中</div></div>
+      <div class="panel-title spaced">RECENT CHANGES</div>
+      <ul id="dev-recent" class="dev-list"><li class="empty">読み込み中</li></ul>
+      <div class="panel-title spaced">ERRORS <span class="hint">ログの直近</span></div>
+      <ul id="dev-errors" class="dev-list"><li class="empty">エラーはありません</li></ul>
+    </div>
+    <div class="normal-only">
+    <div class="panel-title spaced">WEATHER <span class="hint">LOCAL</span></div>
+    <div class="weather">
+      <div class="weather-main">
+        <svg id="w-icon" class="w-icon" viewBox="0 0 48 48" aria-hidden="true"></svg>
+        <div id="w-temp" class="w-temp">--<small>°C</small></div>
+        <div id="w-text" class="w-text">取得中</div>
+      </div>
+      <div class="w-rows">
+        <div><span>最高</span><b id="w-max">--</b></div>
+        <div><span>最低</span><b id="w-min">--</b></div>
+        <div><span>降水確率</span><b id="w-pop">--</b></div>
+        <div><span>湿度</span><b id="w-hum">--</b></div>
+      </div>
+    </div>
+
+    <div class="panel-title spaced">TODAY'S SCHEDULE</div>
+    <ul id="schedule" class="schedule"><li class="empty">取得中</li></ul>
+    </div>
+    <div id="timers-block" class="is-empty">
+      <div class="panel-title spaced">TIMERS ／ ALARMS</div>
+      <ul id="timers" class="schedule"><li class="empty">セットされていません</li></ul>
+    </div>
+    <div class="normal-only">
+    <div class="panel-title spaced">THIS WEEK</div>
+    <ul id="week" class="schedule week"><li class="empty">取得中</li></ul>
+    </div>
+  </section>
+
+  <section class="core">
+    <svg class="reactor" viewBox="0 0 400 400" aria-hidden="true">
+      <defs>
+        <radialGradient id="coreGlow">
+          <stop offset="0%" style="stop-color: var(--hot); stop-opacity: 1"/>
+          <stop offset="45%" style="stop-color: var(--accent); stop-opacity: .55"/>
+          <stop offset="100%" style="stop-color: var(--accent); stop-opacity: 0"/>
+        </radialGradient>
+      </defs>
+      <g class="ripples">
+        <circle class="ripple" cx="200" cy="200" r="60"/>
+        <circle class="ripple" cx="200" cy="200" r="60"/>
+        <circle class="ripple" cx="200" cy="200" r="60"/>
+      </g>
+      <circle class="ring ticks" cx="200" cy="200" r="190"/>
+      <circle class="ring outer" cx="200" cy="200" r="172"/>
+      <g class="spin slow"><circle class="ring dash-long" cx="200" cy="200" r="152"/></g>
+      <g class="spin rev"><circle class="ring dash-short" cx="200" cy="200" r="130"/></g>
+      <g class="spin fast">
+        <path class="arc" d="M200 92 A108 108 0 0 1 308 200"/>
+        <path class="arc" d="M200 308 A108 108 0 0 1 92 200"/>
+      </g>
+      <g class="spin rev slow"><circle class="ring segments" cx="200" cy="200" r="86"/></g>
+      <circle class="core-glow" cx="200" cy="200" r="80" fill="url(#coreGlow)"/>
+      <circle class="core-ring" cx="200" cy="200" r="46"/>
+      <circle class="core-dot" cx="200" cy="200" r="22"/>
+    </svg>
+    <div class="state">
+      <div id="state-en" class="state-en">BOOTING</div>
+      <div id="state-ja" class="state-ja">起動中</div>
+    </div>
+    <div id="enroll-dots" class="enroll-dots" aria-hidden="true"></div>
+    <div id="caption" class="caption" aria-live="polite"></div>
+    <div class="meter"><div id="meter-bar"></div></div>
+    <button id="stop-btn" class="stop-btn" onclick="window.pywebview && window.pywebview.api.stop()">STOP</button>
+  </section>
+
+  <section class="panel right">
+    <div class="normal-only">
+    <div class="panel-title">TASKS <span id="task-count" class="hint"></span></div>
+    <ul id="tasks" class="tasks"><li class="empty">タスクはありません</li></ul>
+    </div>
+    <div class="dev-only dev-tasks">
+      <div class="panel-title">DEV TASKS <span id="dev-task-count" class="hint"></span></div>
+      <ul id="dev-tasks" class="tasks"><li class="empty">開発のやることはありません</li></ul>
+    </div>
+  </section>
+
+  <section class="panel log">
+    <div class="panel-title">CONVERSATION LOG <span class="hint">スクロールで過去の会話</span></div>
+    <div id="log" class="log-list"></div>
+    <button id="to-latest" class="to-latest" onclick="scrollToLatest()">▼ 最新へ</button>
+    <form id="composer" class="composer" onsubmit="return jarvis.sendText(event)">
+      <div id="attachments" class="attachments"></div>
+      <div class="composer-row">
+        <button type="button" class="icon-btn" title="ファイルを添付（ドラッグ＆ドロップ・Ctrl+V でも可）" aria-label="ファイルを添付"
+                onclick="document.getElementById('file-input').click()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5l-8.1 8.1a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
+        </button>
+        <input type="file" id="file-input" multiple hidden onchange="jarvis.addFiles(this.files); this.value = ''">
+        <textarea id="text-input" rows="1" placeholder="メッセージを入力（Enter で送信・Shift+Enter で改行）"></textarea>
+        <button type="submit" class="icon-btn send" title="送信" aria-label="送信">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z"/></svg>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel news">
+    <div class="normal-only">
+    <div class="panel-title">NEWS <span class="hint">NHK 主要ニュース</span></div>
+    <ul id="news" class="news-list"><li class="empty">取得中</li></ul>
+    </div>
+    <div class="dev-only dev-activity">
+      <div class="panel-title">HELD <span id="held-count" class="hint"></span>
+        <button id="held-all" class="mini-btn" onclick="jarvis.heldAction('approve', '')" hidden>全部承認</button></div>
+      <ul id="held" class="dev-list held-list"><li class="empty">保留はありません</li></ul>
+      <div class="panel-title spaced">PASSED WITHOUT CONFIRM <span class="hint">確認を省略して通した操作</span></div>
+      <ul id="dev-passed" class="dev-list"><li class="empty">まだありません</li></ul>
+    </div>
+  </section>
+</main>
+
+<div id="popup" class="popup" hidden>
+  <div class="popup-bar"><span id="popup-title" class="popup-title"></span><button id="popup-close" aria-label="閉じる" onclick="jarvis.closePopup()">×</button></div>
+  <iframe id="popup-frame" class="popup-frame" allow="autoplay; fullscreen"></iframe>
+</div>
+<div id="mode-flash" class="mode-flash" aria-hidden="true">
+  <div class="mf-glow"></div>
+  <div class="mf-band"></div>
+  <div class="mf-text"><div id="mf-title" class="mf-title"></div><div id="mf-sub" class="mf-sub"></div></div>
+</div>
+<div id="drop-overlay" class="drop-overlay"><div>ファイルをドロップして添付</div></div>
+<script src="app.js"></script>
+</body>
+</html>

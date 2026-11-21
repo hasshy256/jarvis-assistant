@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+*.log
+logs/
+*.wav
+reminders*.json
+tasks.json
+minutes/
+drafts/
+token.json
+credentials.json
+push_topic.txt

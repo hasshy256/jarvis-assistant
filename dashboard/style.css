@@ -1,0 +1,541 @@
+﻿/* 色を「色」として登録しておくと、開発モードの切り替えのとき、色がなめらかに変わる */
+@property --bg { syntax: "<color>"; inherits: true; initial-value: #02070d; }
+@property --bg2 { syntax: "<color>"; inherits: true; initial-value: #06202b; }
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #2ee6ff; }
+@property --hot { syntax: "<color>"; inherits: true; initial-value: #d9fbff; }
+@property --dim { syntax: "<color>"; inherits: true; initial-value: rgba(46, 230, 255, .35); }
+@property --faint { syntax: "<color>"; inherits: true; initial-value: rgba(46, 230, 255, .12); }
+@property --text { syntax: "<color>"; inherits: true; initial-value: #cdf6ff; }
+@property --muted { syntax: "<color>"; inherits: true; initial-value: #6fa7b5; }
+:root {
+  --bg: #02070d;
+  --bg2: #06202b;
+  --accent: #2ee6ff;
+  --hot: #d9fbff;
+  --rgb: 46, 230, 255;   /* accent の RGB。半透明の色（rgba）はこれから作る */
+  --dim: rgba(var(--rgb), .35);
+  --faint: rgba(var(--rgb), .12);
+  --text: #cdf6ff;
+  --muted: #6fa7b5;
+  --spin: 1;
+  --level: 0;
+  --num: "Bahnschrift", "Segoe UI", sans-serif;
+  --jp: "Yu Gothic UI", "Meiryo", sans-serif;
+}
+/* 開発モード: 緑の端末（ターミナル）風。状態の色（考え中・確認待ち・アラーム）は下の規則が上書きする */
+body.dev {
+  --bg: #010a06; --bg2: #042417; --accent: #4dff9a; --hot: #e6fff1; --rgb: 77, 255, 154;
+  --dim: rgba(var(--rgb), .36); --faint: rgba(var(--rgb), .12); --text: #d2ffe6; --muted: #6fb08a;
+}
+/* 切り替えの間だけ、色を 1.1 秒かけて変える（ふだんは状態の色が即座に変わるように、遅らせない） */
+body.dev-switching {
+  transition: --bg 1.1s ease, --bg2 1.1s ease, --accent 1.1s ease, --hot 1.1s ease,
+              --dim 1.1s ease, --faint 1.1s ease, --text 1.1s ease, --muted 1.1s ease;
+}
+body.state-thinking { --accent: #ffb547; --hot: #fff1d6; --dim: rgba(255, 181, 71, .4); --faint: rgba(255, 181, 71, .12); }
+body.state-confirm { --accent: #ff4d5e; --hot: #ffe1e4; --dim: rgba(255, 77, 94, .45); --faint: rgba(255, 77, 94, .14); }
+body.state-alarm { --accent: #ffb547; --hot: #fff1d6; --dim: rgba(255, 181, 71, .5); --faint: rgba(255, 181, 71, .16); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: radial-gradient(ellipse at 50% 45%, var(--bg2) 0%, var(--bg) 62%);
+  color: var(--text);
+  font-family: var(--jp);
+  transition: color .4s;
+}
+.grid-bg {
+  position: fixed; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(var(--rgb), .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--rgb), .05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 80%);
+}
+.scanlines {
+  position: fixed; inset: 0; pointer-events: none; opacity: .12;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .35) 0 1px, transparent 1px 3px);
+}
+
+.hud {
+  position: relative; height: 100%;
+  display: grid; gap: 24px; padding: 28px 36px;
+  /* 中央に円と会話（主役）、左は時刻・天気・タスク（縦いっぱい）、右は予定とニュース */
+  grid-template-columns: minmax(300px, 1fr) minmax(480px, 1.6fr) minmax(300px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "top top top" "left core right" "left log news";
+}
+/* 上部バー: 左にロゴ、中央に操作（モード・ミュート）、右に PC の状態 */
+.top { grid-area: top; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px; }
+.controls { display: flex; align-items: center; gap: 16px; }
+.top-right { display: flex; align-items: center; justify-content: flex-end; gap: 28px; }
+.brand { font-family: var(--num); font-size: 28px; letter-spacing: .35em; color: var(--accent); text-shadow: 0 0 12px var(--accent); }
+.brand span { display: block; font-size: 10px; letter-spacing: .3em; color: var(--muted); text-shadow: none; margin-top: 4px; }
+.modes { display: flex; gap: 0; border: 1px solid var(--dim); }
+.modes button {
+  padding: 8px 20px; cursor: pointer; font-family: var(--jp); font-size: 14px; letter-spacing: .1em;
+  color: var(--muted); background: transparent; border: 0; border-right: 1px solid var(--faint);
+}
+.modes button:last-child { border-right: 0; }
+.modes button:hover { color: var(--text); background: var(--faint); }
+.modes button.active { color: var(--bg); background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+.mutes { display: flex; gap: 8px; }
+.mutes button {
+  display: grid; place-items: center; width: 42px; height: 42px; padding: 0; cursor: pointer;
+  background: transparent; border: 1px solid var(--dim); border-radius: 50%;
+  box-shadow: 0 0 10px var(--faint), inset 0 0 10px var(--faint);
+}
+.mutes button:hover { background: var(--faint); }
+.mutes svg { width: 22px; height: 22px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px var(--accent)); }
+.mutes .slash { display: none; stroke: #ff4d5e; stroke-width: 2.4; }
+.mutes button.muted { background: rgba(255, 77, 94, .14); border-color: rgba(255, 77, 94, .7); box-shadow: 0 0 14px rgba(255, 77, 94, .4); }
+.mutes button.muted svg { stroke: #ff7a86; filter: drop-shadow(0 0 4px #ff4d5e); }
+.mutes button.muted .slash { display: inline; }
+.mutes button.muted .wave { display: none; }
+/* マイクのミュート中は、聞こえていないことが分かるよう音量バーを赤く止める */
+body.mic-muted .meter { background: rgba(255, 77, 94, .25); }
+.sys { font-family: var(--num); font-size: 13px; letter-spacing: .2em; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.sys .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: blink 2s infinite; }
+
+.panel {
+  position: relative; padding: 22px 26px;
+  border: 1px solid var(--dim);
+  background: linear-gradient(160deg, rgba(var(--rgb), .055), rgba(2, 7, 13, .75) 60%);
+  box-shadow: 0 0 18px var(--faint), inset 0 0 22px rgba(var(--rgb), .05);
+  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+  min-height: 0;
+}
+.panel::before, .panel::after {
+  content: ""; position: absolute; width: 18px; height: 18px; border: 2px solid var(--accent);
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+.panel::before { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
+.panel::after { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
+.left { grid-area: left; }
+.right { grid-area: right; display: flex; flex-direction: column; }
+.log { grid-area: log; display: flex; flex-direction: column; }
+.news { grid-area: news; display: flex; flex-direction: column; min-height: 0; }
+.right { min-height: 0; overflow: hidden; }  /* はみ出しは中の今週の予定がスクロールして受け持つ */
+.left { min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+.left::-webkit-scrollbar { width: 4px; }
+.left::-webkit-scrollbar-thumb { background: var(--dim); }
+/* 見出し: 小さなひし形の印と、下に細い線。補足（件数・地域など）は右端にそろえる */
+.panel-title {
+  display: flex; align-items: center; gap: 10px; flex: none;
+  font-family: var(--num); font-size: 12px; letter-spacing: .32em; color: var(--accent);
+  margin-bottom: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--faint);
+}
+.panel-title::before {
+  content: ""; width: 6px; height: 6px; flex: none; background: var(--accent);
+  transform: rotate(45deg); box-shadow: 0 0 6px var(--accent);
+}
+.panel-title.spaced { margin-top: 24px; }
+
+.clock { font-family: var(--num); font-size: 76px; line-height: 1; color: var(--hot); text-shadow: 0 0 16px var(--dim); font-variant-numeric: tabular-nums; }
+.clock-row { display: flex; align-items: baseline; gap: 10px; }
+.seconds { font-family: var(--num); font-size: 26px; color: var(--accent); opacity: .8; font-variant-numeric: tabular-nums; }
+.date { font-size: 16px; color: var(--text); opacity: .85; margin-top: 10px; letter-spacing: .08em; }
+
+.weather-main { display: flex; align-items: center; gap: 14px; }
+.w-icon { width: 46px; height: 46px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px var(--dim)); }
+.w-temp { font-family: var(--num); font-size: 48px; line-height: 1; color: var(--hot); }
+.w-temp small { font-size: 20px; color: var(--accent); }
+.w-text { font-size: 17px; color: var(--text); }
+.w-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px; margin-top: 14px; }
+.w-rows div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--faint); padding-bottom: 5px; }
+.w-rows span { color: var(--muted); font-size: 13px; }
+.w-rows b { font-family: var(--num); font-weight: 400; color: var(--text); }
+
+.schedule { list-style: none; overflow: auto; }
+.schedule li { display: grid; grid-template-columns: 76px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(var(--rgb), .07); font-size: 16px; }
+.schedule li:last-child { border-bottom: 0; }
+#schedule li.over { opacity: 0.4; }  /* 終わった予定は薄く（今日中は残す） */
+#schedule li { grid-template-columns: 112px 1fr; }  /* 「16:30–22:00」と開始から終了まで出すぶん広め */
+.schedule .time { font-family: var(--num); color: var(--accent); font-variant-numeric: tabular-nums; }
+.schedule .empty { display: block; color: var(--muted); }
+#timers li { animation: none; }  /* 毎秒描き直すので、ふわっと出る演出はしない */
+#timers .time { font-variant-numeric: tabular-nums; }
+
+.log-list { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; padding-right: 12px; }
+.log-list > :first-child { margin-top: auto; }  /* 少ないときは下に寄せる */
+.log-list::-webkit-scrollbar { width: 6px; }
+.log-list::-webkit-scrollbar-track { background: var(--faint); }
+.log-list::-webkit-scrollbar-thumb { background: var(--dim); }
+.log-list::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.log-sep { text-align: center; font-size: 12px; color: var(--muted); letter-spacing: .2em; padding: 6px 0; border-bottom: 1px dashed var(--faint); }
+.panel-title .hint { font-family: var(--jp); letter-spacing: .08em; color: var(--muted); font-size: 12px; margin-left: auto; }
+.to-latest {
+  position: absolute; right: 36px; bottom: 22px; display: none; cursor: pointer;
+  padding: 6px 14px; font-family: var(--jp); font-size: 13px; color: var(--bg);
+  background: var(--accent); border: 0; box-shadow: 0 0 14px var(--accent);
+}
+.to-latest.show { display: block; }
+/* 会話: ジャービスの返事だけ、うっすら背景を付けて見分けやすくする */
+.log-list { gap: 4px; }
+.msg { display: grid; grid-template-columns: 76px 1fr; gap: 12px; padding: 7px 12px; font-size: 16px; line-height: 1.6; border-radius: 3px; animation: fadein .5s; }
+.msg .who { font-family: var(--num); letter-spacing: .2em; font-size: 12px; padding-top: 3px; }
+.msg.user .who { color: var(--muted); }
+.msg.user .body { color: var(--text); opacity: .88; }
+.msg.jarvis { background: rgba(var(--rgb), .05); }
+.msg.jarvis .who { color: var(--accent); }
+.msg.jarvis .body { color: var(--hot); }
+.msg .t { color: var(--muted); font-family: var(--num); font-size: 11px; margin-left: 10px; opacity: .8; }
+
+/* ---- 入力欄・添付ファイル（会話ログの下） ---- */
+.composer { flex: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--faint); }
+.composer-row { display: flex; align-items: flex-end; gap: 8px; }
+#text-input {
+  flex: 1; min-height: 40px; max-height: 112px; resize: none; padding: 9px 14px; line-height: 22px;
+  font-family: var(--jp); font-size: 15px; color: var(--hot); background: rgba(2, 7, 13, .7);
+  border: 1px solid var(--dim); border-radius: 4px; outline: none; transition: border-color .2s, box-shadow .2s;
+}
+#text-input::placeholder { color: var(--muted); opacity: .8; }
+#text-input:focus { border-color: var(--accent); box-shadow: 0 0 12px var(--faint); }
+.icon-btn {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; cursor: pointer;
+  background: transparent; border: 1px solid var(--dim); border-radius: 4px; transition: background .2s;
+}
+.icon-btn:hover { background: var(--faint); }
+.icon-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn.send { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px var(--faint); }
+.icon-btn.send svg { stroke: var(--bg); fill: var(--bg); }
+.attachments { display: none; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.composer.has-files .attachments { display: flex; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 320px; padding: 4px 6px 4px 10px;
+  font-size: 13px; color: var(--text); background: rgba(var(--rgb), .08); border: 1px solid var(--dim); border-radius: 3px;
+}
+.chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-size { flex: none; color: var(--muted); font-family: var(--num); font-size: 11px; }
+.chip.loading { opacity: .6; }
+.chip.error { border-color: rgba(255, 77, 94, .6); }
+.chip.error .chip-size { color: #ff7a86; }
+.chip-x { flex: none; width: 20px; height: 20px; padding: 0; cursor: pointer; color: var(--muted); background: none; border: 0; font-size: 16px; line-height: 1; }
+.chip-x:hover { color: var(--hot); }
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 10; display: none; place-items: center; pointer-events: none;
+  background: rgba(2, 7, 13, .75); border: 2px dashed var(--accent);
+}
+.drop-overlay.show { display: grid; }
+.drop-overlay div { font-size: 22px; letter-spacing: .1em; color: var(--hot); text-shadow: 0 0 12px var(--accent); }
+.to-latest { bottom: 86px; }
+
+/* ---- PC の状態・今週の予定・ニュース ---- */
+.stats { display: flex; gap: 18px; }
+.stat { display: grid; grid-template-columns: auto 52px 34px; align-items: center; gap: 8px; font-family: var(--num); font-size: 12px; }
+.stat span { color: var(--muted); letter-spacing: .15em; }
+.stat b { font-weight: 400; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.stat .bar { height: 6px; background: var(--faint); overflow: hidden; }
+.stat .bar i { display: block; height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px var(--accent); transition: width .6s; }
+.schedule.week li { grid-template-columns: 148px 1fr; padding: 7px 0; font-size: 15px; }
+.schedule.week .time { font-size: 14px; white-space: nowrap; }
+.schedule.week .time em { font-style: normal; color: var(--muted); margin-right: 8px; }
+.schedule.week { flex: 1; min-height: 0; overflow: auto; }
+.tasks { list-style: none; overflow: auto; flex: 1 0 auto; min-height: 96px; max-height: 40vh; padding-right: 8px; }
+.tasks::-webkit-scrollbar, .schedule::-webkit-scrollbar { width: 6px; }
+.tasks::-webkit-scrollbar-track, .schedule::-webkit-scrollbar-track { background: var(--faint); }
+.tasks::-webkit-scrollbar-thumb, .schedule::-webkit-scrollbar-thumb { background: var(--dim); }
+.tasks::-webkit-scrollbar-thumb:hover, .schedule::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.tasks li { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 1px solid rgba(var(--rgb), .07); font-size: 16px; cursor: pointer; transition: background .2s; }
+.tasks li:hover { background: rgba(var(--rgb), .05); }
+.tasks .box { width: 16px; height: 16px; border: 1px solid var(--accent); box-shadow: 0 0 6px var(--faint); display: grid; place-items: center; font-size: 12px; line-height: 1; color: var(--bg); }
+.tasks li.done .box { background: var(--accent); }
+.tasks li.done .title { color: var(--muted); text-decoration: line-through; }
+.tasks .due { font-family: var(--num); font-size: 12px; color: var(--accent); }
+.tasks .due.over { color: #ff4d5e; }
+.tasks .due.today { color: #ffb547; text-shadow: 0 0 8px rgba(255, 181, 71, .6); }
+.tasks li.soon { background: rgba(255, 77, 94, .09); box-shadow: inset 3px 0 0 #ff4d5e; }
+.tasks li.soon .title { color: #ffd6da; font-weight: 600; }
+.tasks li.soon .due { color: #ff4d5e; text-shadow: 0 0 8px rgba(255, 77, 94, .6); }
+.tasks .empty { display: block; color: var(--muted); cursor: default; }
+.news-list { list-style: none; overflow: auto; flex: 1; min-height: 0; padding-right: 8px; }
+.news-list li { display: grid; grid-template-columns: 48px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(var(--rgb), .07); font-size: 15px; line-height: 1.45; }
+.news-list li:last-child { border-bottom: 0; }
+.news-list .t { font-family: var(--num); font-size: 12px; color: var(--muted); padding-top: 3px; font-variant-numeric: tabular-nums; }
+.news-list .empty { display: block; color: var(--muted); }
+.news-list::-webkit-scrollbar { width: 6px; }
+.news-list::-webkit-scrollbar-thumb { background: var(--dim); }
+
+/* ---- 中央のリアクター ---- */
+.core { grid-area: core; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
+.reactor { width: min(100%, 28vh); height: auto; overflow: visible; filter: drop-shadow(0 0 10px var(--accent)); }
+.ring { fill: none; stroke: var(--accent); transition: stroke .4s; }
+.ticks { stroke-width: 6; stroke-dasharray: 1.5 8.4; opacity: .55; }
+.outer { stroke-width: 1.5; opacity: .6; }
+.dash-long { stroke-width: 3; stroke-dasharray: 120 40; opacity: .8; }
+.dash-short { stroke-width: 8; stroke-dasharray: 6 10; opacity: .45; }
+.segments { stroke-width: 10; stroke-dasharray: 40 14; opacity: .7; }
+.arc { fill: none; stroke: var(--hot); stroke-width: 4; stroke-linecap: round; opacity: .9; }
+.core-ring { fill: none; stroke: var(--hot); stroke-width: 3; }
+.core-dot { fill: var(--hot); }
+.core-glow { transform-origin: 200px 200px; transform: scale(calc(1 + var(--level) * .6)); transition: transform .08s linear; }
+
+.spin { transform-origin: 200px 200px; animation: spin calc(14s / var(--spin)) linear infinite; }
+.spin.slow { animation-duration: calc(30s / var(--spin)); }
+.spin.fast { animation-duration: calc(6s / var(--spin)); }
+.spin.rev { animation-direction: reverse; }
+
+.state { text-align: center; margin-top: 26px; }
+.state-en { font-family: var(--num); font-size: 26px; letter-spacing: .45em; color: var(--accent); text-shadow: 0 0 14px var(--accent); }
+.state-ja { font-size: 16px; color: var(--muted); margin-top: 6px; letter-spacing: .2em; }
+.meter { width: 240px; height: 4px; margin-top: 18px; background: var(--faint); overflow: hidden; visibility: hidden; }
+/* 音量バーは、聞いているとき（認識中・確認待ち・声の登録中）だけ出す */
+body.state-listening .meter, body.state-confirm .meter, body.state-enroll .meter { visibility: visible; }
+/* 字幕（考え中はあなたの依頼、話し中はジャービスの返事） */
+.caption {
+  max-width: min(640px, 92%); min-height: 1.6em; margin-top: 14px; text-align: center;
+  font-size: 16px; line-height: 1.6; color: var(--hot); opacity: 0; transform: translateY(4px);
+  transition: opacity .35s, transform .35s;
+}
+.caption.show { opacity: .92; transform: none; }
+.caption.user { color: var(--muted); font-size: 15px; }
+/* 何もないときの表示は控えめに */
+.schedule .empty, .tasks .empty, .news-list .empty { font-size: 14px; color: var(--muted); opacity: .75; padding: 6px 0; border: 0; }
+/* タイマーが何もないときは、欄ごと畳んで今週の予定に場所を譲る */
+#timers-block.is-empty { display: none; }
+/* キーボードで操作したときも、どこにいるか分かるように */
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#meter-bar { height: 100%; width: calc(var(--level) * 100%); background: var(--accent); box-shadow: 0 0 8px var(--accent); transition: width .08s linear; }
+
+.reactor { transition: opacity .5s, filter .5s; }
+.ripple { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; transform-origin: 200px 200px; }
+
+body.state-booting .reactor { opacity: .4; }
+/* 待機中: 円は止まり、暗く沈む */
+body.state-idle .spin { animation-play-state: paused; }
+body.state-idle .reactor { opacity: .38; filter: drop-shadow(0 0 3px var(--accent)) saturate(.6); }
+body.state-idle .state-en { opacity: .6; text-shadow: none; }
+body.state-listening { --spin: 1.4; }
+body.state-listening .ticks { opacity: .9; }
+body.state-thinking { --spin: 3.5; }
+body.state-thinking .core-ring { animation: pulse .6s ease-in-out infinite; }
+/* 声の登録: 紫色になり、何回目かを点で示す。話してほしいときは中心が大きく脈打ち、音量バーも出る */
+body.state-enroll { --accent: #b48cff; --hot: #f0e6ff; --dim: rgba(180, 140, 255, .45); --faint: rgba(180, 140, 255, .14); --spin: .7; }
+body.state-enroll .state-en { font-size: 20px; letter-spacing: .3em; }
+body.state-enroll .state-ja { color: var(--hot); font-size: 17px; }
+.enroll-dots { display: none; gap: 12px; margin-top: 14px; }
+body.state-enroll .enroll-dots { display: flex; }
+.enroll-dots span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--dim); transition: background .3s, border-color .3s, box-shadow .3s; }
+.enroll-dots span.done { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.enroll-dots span.now { border-color: var(--accent); animation: pulse .8s ease-in-out infinite; }
+body.state-enroll.enroll-listening .core-glow { animation: talk .5s ease-in-out infinite alternate; }
+body.state-enroll.enroll-listening .ripple { animation: ripple 1.4s ease-out infinite; }
+body.state-enroll.enroll-listening .ripple:nth-child(2) { animation-delay: .47s; }
+body.state-enroll.enroll-listening .ripple:nth-child(3) { animation-delay: .94s; }
+/* スリープ: 色が抜けて暗くなり、円は止まる */
+body.state-sleep { --accent: #5f7f8a; --hot: #9fb4bb; --dim: rgba(95, 127, 138, .35); --faint: rgba(95, 127, 138, .1); }
+body.state-sleep .spin { animation-play-state: paused; }
+body.state-sleep .reactor { opacity: .22; filter: none; }
+body.state-sleep .panel, body.state-sleep .brand { opacity: .55; }
+body.state-sleep .state-en { text-shadow: none; }
+/* 常時会話モードの待機中: 円がゆっくり回り続け、聞いていることを示す */
+body.state-idle.mode-always .spin { animation-play-state: running; }
+body.state-idle.mode-always { --spin: .35; }
+body.state-idle.mode-always .reactor { opacity: .7; }
+/* アラーム: 全体が点滅し、STOP ボタンが出る */
+.stop-btn {
+  display: none; margin-top: 22px; padding: 12px 56px; cursor: pointer;
+  font-family: var(--num); font-size: 22px; letter-spacing: .4em; color: var(--bg);
+  background: var(--accent); border: 0; box-shadow: 0 0 24px var(--accent);
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+body.state-alarm { --spin: 2.5; }
+body.state-alarm .stop-btn { display: block; }
+/* 考え中・話し中も STOP で止められる（割り込み）。アラームより控えめに */
+body.state-thinking .stop-btn, body.state-speaking .stop-btn {
+  display: block; margin-top: 12px; padding: 6px 30px; font-size: 14px; color: var(--accent); background: transparent;
+  border: 1px solid var(--dim); box-shadow: 0 0 10px var(--faint);
+}
+body.state-thinking .meter, body.state-speaking .meter { display: none; }
+body.state-alarm .meter { display: none; }
+body.state-alarm .hud { animation: alarm-flash 1s ease-in-out infinite; }
+body.state-alarm .ripple { animation: ripple 1s ease-out infinite; }
+body.state-alarm .ripple:nth-child(2) { animation-delay: .33s; }
+body.state-alarm .ripple:nth-child(3) { animation-delay: .66s; }
+@keyframes alarm-flash { 50% { filter: brightness(1.5); } }
+/* 確認待ち: 赤くなり、中心がゆっくり点滅して返事を待つ */
+body.state-confirm { --spin: .5; }
+body.state-confirm .core-ring, body.state-confirm .core-dot { animation: pulse 1.2s ease-in-out infinite; }
+body.state-confirm .state-en { font-size: 20px; letter-spacing: .3em; }
+/* 応答中: 回転に加えて、中心から波紋が広がり続ける */
+body.state-speaking { --spin: 1.2; }
+body.state-speaking .reactor { filter: drop-shadow(0 0 18px var(--accent)); }
+body.state-speaking .core-glow { animation: talk .35s ease-in-out infinite alternate; }
+body.state-speaking .ripple { animation: ripple 1.8s ease-out infinite; }
+body.state-speaking .ripple:nth-child(2) { animation-delay: .6s; }
+body.state-speaking .ripple:nth-child(3) { animation-delay: 1.2s; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes ripple { from { transform: scale(1); opacity: .8; } to { transform: scale(3.3); opacity: 0; } }
+@keyframes pulse { 50% { opacity: .3; } }
+@keyframes talk { from { transform: scale(.95); } to { transform: scale(1.25); } }
+@keyframes blink { 50% { opacity: .3; } }
+/* 新しく増えた行は光りながら滑り込み、内容が変わった行は一瞬光る */
+.added { animation: added 2.4s ease-out; }
+.changed { animation: changed 1.6s ease-out; }
+@keyframes added {
+  0% { opacity: 0; transform: translateX(-14px); background: var(--dim); box-shadow: inset 3px 0 0 var(--accent); }
+  15% { opacity: 1; transform: none; }
+  100% { background: transparent; box-shadow: inset 0 0 0 transparent; }
+}
+@keyframes changed { 0% { background: var(--dim); } 100% { background: transparent; } }
+@keyframes fadein { from { opacity: 0; transform: translateY(6px); } }
+/* 画面が小さいとき（ウィンドウを小さくした、解像度の低いモニターに出した）は、文字と余白を詰める */
+@media (max-width: 1600px), (max-height: 920px) {
+  .hud { gap: 16px; padding: 18px 24px; }
+  .reactor { width: min(100%, 24vh); }
+  .panel { padding: 16px 18px; }
+  .brand { font-size: 22px; }
+  .brand span { display: none; }
+  .clock { font-size: 58px; }
+  .seconds { font-size: 20px; }
+  .w-temp { font-size: 38px; }
+  .w-icon { width: 36px; height: 36px; }
+  .panel-title.spaced { margin-top: 16px; }
+  .schedule li, .tasks li { padding: 7px 0; font-size: 15px; }
+  .msg { font-size: 15px; padding: 5px 10px; }
+  .modes button { padding: 7px 14px; }
+  .mutes button { width: 36px; height: 36px; }
+  .stat { grid-template-columns: auto 40px 32px; }
+  .stats { gap: 12px; }
+  .state { margin-top: 16px; }
+  .state-en { font-size: 22px; }
+}
+@media (max-height: 800px) {
+  .w-rows { display: none; }  /* 画面が低いときは、天気の細かい数値を省いてタスクに場所を回す */
+  .caption { font-size: 14px; margin-top: 8px; }
+}
+@media (max-width: 1400px) {
+  #sys-text { display: none; }  /* 「SYSTEM ONLINE」は点だけ残す */
+  .w-rows { gap: 6px 14px; }
+}
+/* 幅が 1200px 以下（半分に並べたウィンドウなど）は 3 列だと右が切れるので、2 列に組み替える */
+@media (max-width: 1200px) {
+  .hud {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-rows: auto repeat(3, minmax(0, 1fr));
+    grid-template-areas: "top top" "left core" "left log" "right news";
+  }
+  .top { grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
+  .top-right { display: none; }  /* PC の状態は幅が足りないので省く */
+  .brand { font-size: 18px; letter-spacing: .2em; }
+  .controls { justify-content: flex-end; flex-wrap: nowrap; gap: 8px; min-width: 0; }
+  .modes button { padding: 6px 8px; font-size: 13px; white-space: nowrap; }
+  .mutes { gap: 4px; }
+  .mutes button { width: 32px; height: 32px; }
+  .reactor { width: min(100%, 17vh); }  /* 中央の高さが足りないので、円と文字を小さくして STOP が見出しに重ならないようにする */
+  .state { margin-top: 6px; }
+  .state-en { font-size: 18px; }
+  .state-ja { margin-top: 2px; font-size: 13px; }
+  .caption { margin-top: 4px; font-size: 13px; }
+  .schedule.week li { grid-template-columns: 112px 1fr; }
+}
+/* 入力欄のスクロールバーも、ほかの欄と同じ細くて暗い色にする */
+#text-input::-webkit-scrollbar { width: 6px; }
+#text-input::-webkit-scrollbar-track { background: transparent; }
+#text-input::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+#text-input::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+/* ポップアップ窓（サイト・画像・動画をダッシュボードの中に重ねて出す） */
+.popup {
+  position: fixed; left: 50%; top: 52%; transform: translate(-50%, -50%);
+  width: min(78vw, 1200px); height: min(76vh, 820px); z-index: 50;
+  display: flex; flex-direction: column;
+  background: rgba(2, 12, 20, .96); border: 1px solid var(--accent);
+  box-shadow: 0 0 40px var(--faint), 0 0 0 1px var(--faint) inset;
+}
+.popup[hidden] { display: none; }
+.popup-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--dim); }
+.popup-title { font-family: var(--num); letter-spacing: .12em; color: var(--accent); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popup-bar button { background: none; border: 1px solid var(--dim); color: var(--accent); width: 30px; height: 26px; font-size: 18px; cursor: pointer; }
+.popup-bar button:hover { background: var(--faint); }
+.popup-frame { flex: 1; border: 0; background: #fff; }
+@media (prefers-reduced-motion: reduce) { .spin, .core-glow, .core-ring, .ripple { animation: none !important; } }
+
+/* ================= 開発モード ================= */
+/* 欄の出し分け: 開発モード中は、日付と時刻以外の ふだんの情報（天気・予定・ニュース・PC の状態）を畳む */
+.normal-only { display: contents; }
+.dev-only { display: none; }
+body.dev .normal-only { display: none; }
+body.dev .dev-only { display: flex; flex-direction: column; min-height: 0; }
+body.dev .stats { display: none; }
+.dev-session { display: none; align-items: center; gap: 8px; font-family: var(--num); font-size: 13px; letter-spacing: .2em; color: var(--accent); text-shadow: 0 0 10px var(--faint); }
+.dev-session b { font-weight: 400; color: var(--hot); font-variant-numeric: tabular-nums; letter-spacing: .12em; }
+.dev-diamond { animation: blink 2s infinite; }
+.dev-until { color: #ffd37a; letter-spacing: .1em; font-variant-numeric: tabular-nums; }
+.dev-until:empty { display: none; }
+body.dev .dev-session { display: flex; }
+
+/* 開発ボタン: ふだんはほんのり緑、入っているあいだは基調色で光る */
+.dev-toggle { border-color: rgba(77, 255, 154, .38); }
+.dev-toggle button { color: #5bd98f; letter-spacing: .18em; font-family: var(--num); }
+.dev-toggle button:hover { color: #e6fff1; background: rgba(77, 255, 154, .12); }
+.dev-toggle button.active { color: var(--bg); background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+
+/* ふんいき: 格子を細かく、ロゴの後ろにカーソル、円の目盛りも細かく */
+body.dev .grid-bg { background-size: 24px 24px; }
+body.dev .scanlines { opacity: .2; }
+body.dev .ticks { stroke-dasharray: 1.5 4.2; }
+body.dev .segments { stroke-dasharray: 22 8; }
+
+/* PROJECT（左）・ACTIVITY（右下）・DEV TASKS（右） */
+.dev-project, .dev-activity { overflow: hidden; }
+.dev-activity { flex: 1; overflow-y: auto; padding-right: 8px; }
+/* スクロールバーは TASKS / SCHEDULE / NEWS と同じ見た目にそろえる */
+.dev-activity::-webkit-scrollbar { width: 6px; }
+.dev-activity::-webkit-scrollbar-track { background: var(--faint); }
+.dev-activity::-webkit-scrollbar-thumb { background: var(--dim); }
+.dev-activity::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.dev-tasks { flex: 1; }
+.dev-tasks .tasks { max-height: none; }
+.proj-name { font-family: var(--num); font-size: 22px; letter-spacing: .08em; color: var(--hot); text-shadow: 0 0 12px var(--faint); }
+.proj-meta { margin-top: 6px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.proj-meta.dirty { color: #ffb547; }
+.dev-list { list-style: none; }
+.dev-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; padding: 6px 0; font-size: 14px; line-height: 1.4; border-bottom: 1px solid rgba(var(--rgb), .07); }
+.dev-list .tag { font-family: var(--num); font-size: 12px; color: var(--accent); min-width: 44px; }
+.dev-list .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-list .ago { font-size: 12px; color: var(--muted); }
+.dev-list li.err .txt { color: #ff9aa5; }
+.dev-list .empty { display: block; color: var(--muted); font-size: 14px; opacity: .75; border: 0; }
+.dev-activity .dev-list .txt { white-space: normal; word-break: break-all; }
+.mini-btn { font-family: var(--jp); font-size: 12px; padding: 3px 10px; cursor: pointer; color: var(--accent); background: transparent; border: 1px solid var(--dim); }
+.mini-btn:hover { background: var(--faint); }
+.mini-btn.ok { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.mini-btn.no { color: var(--muted); }
+.mini-btn[hidden] { display: none; }
+.panel-title .mini-btn { margin-left: 10px; }
+/* 保留（承認待ち）があるあいだは、赤くして目に留まるように */
+.held-list li.held-item { grid-template-columns: 1fr auto auto; align-items: center; }
+body.has-held .held-list { background: rgba(255, 77, 94, .09); box-shadow: inset 3px 0 0 #ff4d5e; padding-left: 8px; }
+body.has-held #held-count { color: #ff4d5e; }
+
+/* ===== 切り替えの演出: 光の帯が左から右へ走り、中ほどで色と欄が入れ替わる ===== */
+.mode-flash { position: fixed; inset: 0; z-index: 100; pointer-events: none; visibility: hidden; overflow: hidden; }
+.mode-flash.run { visibility: visible; }
+.mode-flash.to-dev { --c: #4dff9a; --c-rgb: 77, 255, 154; }
+.mode-flash.to-normal { --c: #2ee6ff; --c-rgb: 46, 230, 255; }
+.mf-glow { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 50%, rgba(var(--c-rgb), .26), transparent 64%); }
+.run .mf-glow { animation: mfGlow 2s ease-out forwards; }
+.mf-band {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 46vw; transform: translateX(-50vw);
+  background: linear-gradient(90deg, transparent 0, rgba(var(--c-rgb), .08) 50%, rgba(var(--c-rgb), .32) 100%);
+  border-right: 2px solid var(--c); box-shadow: 10px 0 44px 6px rgba(var(--c-rgb), .65);
+  backdrop-filter: blur(5px) brightness(1.35);
+}
+.run .mf-band { animation: mfSweep 1.3s cubic-bezier(.65, 0, .35, 1) .05s forwards; }
+.mf-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.mf-title, .mf-sub { opacity: 0; font-family: var(--num); padding-left: .3em; }
+.mf-title { font-size: clamp(26px, 4.6vw, 76px); letter-spacing: .3em; color: #fff; text-shadow: 0 0 22px var(--c), 0 0 60px var(--c); }
+.mf-sub { font-size: clamp(11px, 1.2vw, 20px); letter-spacing: .5em; color: var(--c); }
+.run .mf-title { animation: mfTitle 2s ease-out .3s forwards; }
+.run .mf-sub { animation: mfSub 2s ease-out .45s forwards; }
+@keyframes mfSweep { from { transform: translateX(-50vw); } to { transform: translateX(106vw); } }
+@keyframes mfGlow { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes mfTitle {
+  0% { opacity: 0; letter-spacing: .9em; filter: blur(10px); text-shadow: 4px 0 #f0f, -4px 0 #0ff; }
+  18% { opacity: 1; letter-spacing: .4em; filter: blur(0); text-shadow: -3px 0 #f0f, 3px 0 #0ff; }
+  26% { text-shadow: 0 0 22px var(--c), 0 0 60px var(--c); }
+  70% { opacity: 1; letter-spacing: .3em; }
+  100% { opacity: 0; letter-spacing: .24em; filter: blur(4px); }
+}
+@keyframes mfSub { 0% { opacity: 0; transform: translateY(8px); } 25% { opacity: .95; transform: none; } 70% { opacity: .95; } 100% { opacity: 0; } }

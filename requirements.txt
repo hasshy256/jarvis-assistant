@@ -1,0 +1,22 @@
+faster-whisper   # 音声認識（用件の文字起こし）
+vosk             # ウェイクワード検出（軽量・オフライン）
+sounddevice      # マイク入力
+numpy
+edge-tts         # 音声合成（自然な日本語の声）
+pygame           # mp3 の再生
+keyboard         # ホットキー
+pywebview        # ダッシュボード（HTML/CSS をウィンドウとして表示）
+claude-agent-sdk # Claude Code を起動したまま使い回す（返事を速くする）
+openvino-genai   # 音声認識を Arc GPU で動かす（Whisper medium）
+huggingface_hub  # 音声認識モデルのダウンロード
+sherpa-onnx      # 話者認識（はっしぃの声だけに反応する）
+# ほかに入れるもの（pip ではない）: Ollama（PC 内の小さな AI。ollama pull gemma3:4b）、VOICEVOX（声の差し替え。任意）
+fastapi          # iPhone からのリモコン（remote.py）
+uvicorn
+google-api-python-client  # Google カレンダーを PC から直接読む・書く（gcal.py）
+google-auth-oauthlib
+playwright       # manaba の巡回（manaba.py）。ブラウザは入っている Chrome を使う
+keyring          # manaba の ID・パスワードを Windows の資格情報に保存
+beautifulsoup4
+lxml
+pypdf            # 資料 PDF の文字を取り出して要約に使う

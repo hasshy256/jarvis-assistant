@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>JARVIS</title>
+  <meta name="theme-color" content="#02070d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JARVIS">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="logo">J.A.R.V.I.S<span id="build">REMOTE</span></div>
+    <div class="top-right">
+      <a class="chip" href="/manga/" style="text-decoration:none">📚 蔵書</a>
+      <button id="minutesBtn" class="chip off" type="button">📝 議事録</button>
+      <button id="muteBtn" class="chip" type="button">🔊 声あり</button>
+      <span id="link" class="link off">OFFLINE</span>
+    </div>
+  </header>
+
+  <section class="hud">
+    <button id="reactor" class="reactor" type="button" aria-label="押している間、聞き取る"><i></i><i></i><i></i><b></b></button>
+    <div class="clock">
+      <div id="time" class="time">--:--</div>
+      <div id="date" class="date">----</div>
+    </div>
+  </section>
+
+  <details id="agenda" class="agenda">
+    <summary id="agendaSummary">予定・やること</summary>
+    <div id="agendaBody" class="agenda-body"></div>
+  </details>
+
+  <main id="log" class="log"></main>
+
+  <footer class="bottom">
+    <div id="hint" class="hint">🎙 か円を押している間だけ聞き取ります。離すと送ります</div>
+    <div class="bar">
+      <form id="form" class="input">
+        <button id="attach" type="button" aria-label="ファイルを添付">📎</button>
+        <input id="file" type="file" multiple hidden>
+        <textarea id="text" rows="1" placeholder="文字で話しかける…" enterkeyhint="send"></textarea>
+        <button id="send" type="submit" aria-label="送信">➤</button>
+      </form>
+      <button id="mic" type="button" aria-label="押している間、聞き取る">🎙</button>
+    </div>
+  </footer>
+
+  <div id="setup" class="setup" hidden>
+    <form id="setupForm" class="setup-box">
+      <h1>JARVIS REMOTE</h1>
+      <p>PC のジャービスの合言葉（トークン）を入力してください。</p>
+      <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" placeholder="トークン">
+      <p id="setupError" class="error"></p>
+      <button type="submit">接続</button>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
