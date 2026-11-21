@@ -1,7 +1,7 @@
 """取り返しのつかない操作の「確認待ち」と「承認済み」を記録する。guard.py（フック）とジャービス本体の両方が使う。
 
 流れ: guard.py が操作を止めて pending に積む → ジャービスが読み上げて確認 →
-はっしぃが声で承認したらジャービス本体が approved に移す → AI が同じ操作をやり直すと guard.py が通す。
+ユーザーが声で承認したらジャービス本体が approved に移す → AI が同じ操作をやり直すと guard.py が通す。
 承認は AI の自己申告ではなく、ジャービス本体が声を聞いて判断したときだけ記録される。
 """
 import json
@@ -61,7 +61,7 @@ def consume_approval(fingerprint):
 
 # ---- 保留リスト（開発モード用） ----
 # 開発モード中、最低限の歯止めに当たった操作は、その場で確認せずにここへ積む。
-# 作業は止めず、あとではっしぃが画面のボタンか声で承認する。承認されると approved に入り、AI が同じ操作をやり直せば通る。
+# 作業は止めず、あとでユーザーが画面のボタンか声で承認する。承認されると approved に入り、AI が同じ操作をやり直せば通る。
 HELD = os.path.join(DATA_DIR, "held.json")
 HELD_APPROVAL_TTL_SEC = 3600
 
@@ -81,7 +81,7 @@ def clear_held():
 
 def approve_held(fingerprint=None):
     """保留を承認する（fingerprint を指定すればその 1 件、なければ全部）。承認した操作の説明の一覧を返す。
-    画面のボタンか、はっしぃの声を聞いたジャービス本体だけが呼ぶ。"""
+    画面のボタンか、ユーザーの声を聞いたジャービス本体だけが呼ぶ。"""
     now = time.time()
     items = held()
     chosen = [h for h in items if fingerprint in (None, h["fp"])]

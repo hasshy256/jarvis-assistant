@@ -13,7 +13,7 @@ import vault
 from brain import find_claude
 from config import DATA_DIR, MEMORY_MODEL
 
-PROMPT = """あなたはジャービス（はっしぃに仕える AI 執事）の記憶係です。下の会話を読み、長期記憶に残す内容を JSON だけで出力してください。
+PROMPT = """あなたはジャービス（ユーザーに仕える AI 執事）の記憶係です。下の会話を読み、長期記憶に残す内容を JSON だけで出力してください。
 ツールは使いません。説明やコードブロックの記号も書かず、次の形の JSON だけを出力します。
 
 {{"log": "会話の要約", "log_links": ["関連するノート名"], "memories": [{{"note": "ノート名", "text": "覚える内容を一文で", "links": ["関連するノート名"]}}]}}
@@ -22,7 +22,7 @@ PROMPT = """あなたはジャービス（はっしぃに仕える AI 執事）�
   ただし、時刻・天気・タイマー・アラーム・アプリの起動・音量・モードの切り替えといった定型のやりとりしかない会話なら、
   要約せず必ず null にする。定型のやりとりとそれ以外が混ざっているときは、定型の部分を除いて要約する
 - 「来週の金曜」「明日」のような言い方は、会話の日時から計算して「10月23日（金）」のような日付にして書く
-- memories: 今後も役立つことだけ。はっしぃ本人のこと（プロフィール、好み、習慣、学校や仕事）、人物、予定や約束、決めたこと。
+- memories: 今後も役立つことだけ。ユーザー本人のこと（プロフィール、好み、習慣、学校や仕事）、人物、予定や約束、決めたこと。
   なければ []。下の「今の記憶」にすでにある内容は書かない。その場限りの話、雑談、パスワードやカード番号、住所の番地などの機密は書かない
 - note: 今あるノート（{notes}）から合うものを選ぶ。合うものがなければ短い名前で新しく作る（人物ならその人の名前、例: 佐々木さん）
 - log_links・links: 内容に関係する今あるノート名や人物名。なければ []
@@ -37,7 +37,7 @@ _lock = threading.Lock()  # 記憶係が同時に 2 つ動かないように
 
 
 def remember_async(turns, log):
-    """turns: [(はっしぃの発言, ジャービスの返事), ...]"""
+    """turns: [(ユーザーの発言, ジャービスの返事), ...]"""
     if turns:
         threading.Thread(target=_remember, args=(list(turns), log), daemon=True).start()
 
@@ -64,7 +64,7 @@ def save(data, when=None):
 
 def _remember(turns, log):
     when = datetime.now()
-    conversation = "\n".join(f"はっしぃ: {u}\nジャービス: {j}" for u, j in turns)
+    conversation = "\n".join(f"ユーザー: {u}\nジャービス: {j}" for u, j in turns)
     with _lock:
         try:
             vault.ensure()

@@ -57,8 +57,8 @@ SEND_MAX_MB = 100  # iPhone へ送れるファイルの大きさの上限
 CALENDAR_WRITE = re.compile(r"(gcal__create_event|Google_Calendar__(create|update|delete)_event)")
 
 # iPhone から来た依頼に毎回添える説明。iPhone でしかできない操作は、Claude には実行させず ACTION 行で返させる
-REMOTE_NOTE = """（iPhone から文字で届いた依頼です。はっしぃは PC の前にいないので、返事は iPhone で読み上げられます。
-- PC の画面操作は、はっしぃが結果を見られないので、頼まれない限りしない
+REMOTE_NOTE = """（iPhone から文字で届いた依頼です。ユーザーは PC の前にいないので、返事は iPhone で読み上げられます。
+- PC の画面操作は、ユーザーが結果を見られないので、頼まれない限りしない
 {calendar}- iPhone 本体でしかできない操作（アラーム、タイマー、アプリを開く、Web ページを開く）は自分では実行せず、
   返事の最後の行に次の形で 1 つだけ書く。この行は読み上げられず、iPhone のショートカットが実行する
   ACTION: {{"action": "alarm", "time": "07:00"}}
@@ -311,10 +311,10 @@ class Remote:
             self.awaiting = False
             approvals.clear_pending()
             text = (text or "添付したファイルを確認して、内容を簡単に教えて") + (
-                "\n\n（はっしぃが iPhone からファイルを添付しました。Read ツールで中身を確認してから答えてください: "
+                "\n\n（ユーザーが iPhone からファイルを添付しました。Read ツールで中身を確認してから答えてください: "
                 + "、".join(files) + "）")
         elif self.awaiting:
-            # 承認は、はっしぃの返事を受けたこのサーバーでだけ記録する（AI の自己申告では通らない）
+            # 承認は、ユーザーの返事を受けたこのサーバーでだけ記録する（AI の自己申告では通らない）
             self.awaiting = False
             answer = confirmation_answer(text)
             if answer == "yes":
@@ -406,7 +406,7 @@ class Remote:
     def _with_local_context(self, text):
         if not self.local_turns:
             return text
-        lines = "\n".join(f"はっしぃ「{u}」→ ジャービス「{r}」" for u, r in self.local_turns[-6:])
+        lines = "\n".join(f"ユーザー「{u}」→ ジャービス「{r}」" for u, r in self.local_turns[-6:])
         self.local_turns = []
         return f"（直前に、あなたを通さずに返したやりとり。参考にしてください）\n{lines}\n\n{text}"
 

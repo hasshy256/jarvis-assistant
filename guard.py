@@ -21,7 +21,7 @@ DANGEROUS_COMMAND = re.compile(
     r"|stop-computer|restart-computer|shutdown|logoff|stop-process|taskkill|uninstall-package"
     r"|remove-itemproperty|remove-appxpackage|reg\s+delete|winget\s+uninstall|msiexec\s+/x)(?![\w-])")
 # メール送信、ゴミ箱・削除、招待への返事、共有など
-# （予定の追加・変更・削除は確認なしで通す: はっしぃの希望。予定の削除だけは下の CALENDAR_FREE で delete_ から外す）
+# （予定の追加・変更・削除は確認なしで通す: ユーザーの希望。予定の削除だけは下の CALENDAR_FREE で delete_ から外す）
 DANGEROUS_MCP = re.compile(r"(send_message|forward|__reply|trash_|delete_"
                            r"|respond_to_event|share_file|update_file|mark_\w*spam)")
 # 確認なしで通す予定の操作（追加・変更・削除）。招待への返事は相手に届くので止めたまま
@@ -177,19 +177,19 @@ def decide(tool, inp):
         return {}
     fp = hashlib.sha1(f"{tool}\n{json.dumps(inp, sort_keys=True, ensure_ascii=False)}".encode()).hexdigest()
     if approvals.consume_approval(fp):
-        return output("allow", "はっしぃが承認済み")
+        return output("allow", "ユーザーが承認済み")
     if devmode.active:
         if not hard_stop(tool, inp):  # 確認を省略して通し、記録だけ残す
             devmode.record_skip(describe(tool, inp))
             return output("allow", "開発モード中のため確認を省略")
         approvals.add_held(fp, describe(tool, inp))  # 保留に積む（その場の承認は求めない）
         devmode.touch()
-        return output("deny", "開発モード中ですが、この操作は保留リストに積みました（はっしぃがあとで画面か声で承認します）。"
+        return output("deny", "開発モード中ですが、この操作は保留リストに積みました（ユーザーがあとで画面か声で承認します）。"
                               "今は実行できないので、この操作に頼らない残りの作業を続けてください。"
                               "別のコマンドや方法で回避しようとしないでください。承認されたら、まったく同じ内容でやり直すよう頼まれます。"
                               "返事の最後に「保留が何件あります」と一言だけ添えてください。")
     approvals.add_pending(fp, describe(tool, inp))
-    return output("deny", "この操作は取り返しがつかないため、はっしぃの承認が必要です。"
+    return output("deny", "この操作は取り返しがつかないため、ユーザーの承認が必要です。"
                           "何をするのかを一文で読み上げて「よろしいですか」と確認し、返事を待ってください。"
                           "承認されたら、まったく同じ内容でもう一度実行すれば通ります。"
                           "別のコマンドや方法で回避しようとしないでください。")

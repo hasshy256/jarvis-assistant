@@ -26,7 +26,7 @@ MIN_LINES = 15
 ARCHIVE_DIR = os.path.join(vault.ROOT, "記憶アーカイブ")
 BACKUP_DIR = os.path.join(DATA_DIR, "memory_backup")
 
-PROMPT = """あなたはジャービス（はっしぃに仕える AI 執事）の記憶係です。今日は {today} です。
+PROMPT = """あなたはジャービス（ユーザーに仕える AI 執事）の記憶係です。今日は {today} です。
 下は長期記憶のノート「{note}」の各行（行番号つき）です。毎回の会話の始めに全部読み込まれるので、読み込む量を減らしたいです。
 「もう役に立たない行」の行番号だけを JSON で出力してください。説明やコードブロックの記号は書かず、次の形だけを出力します。
 

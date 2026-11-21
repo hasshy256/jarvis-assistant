@@ -43,7 +43,7 @@ WHISPER_VOCAB = ["ジャービス", "タスク", "スケジュール", "予定",
                  "スタクラ", "ゼミ", "課題", "テスト対策", "ダッシュボード", "ニュース", "天気",
                  "スポティファイ", "ディスコード", "LINE", "GitHub", "VS Code", "Chrome", "タイムツリー"]
 
-# ---- 話者認識（はっしぃの声だけに反応する） ----
+# ---- 話者認識（ユーザーの声だけに反応する） ----
 SPEAKER_MODEL = os.path.join(DATA_DIR, "models", "speaker.onnx")
 SPEAKER_CHECK_ALWAYS = True   # 常時会話モードで、ほかの人やテレビの声を無視する
 SPEAKER_CHECK_NORMAL = False  # 通常モード（「ジャービス」と呼んだとき）でも照合するか

@@ -588,7 +588,7 @@ class Jarvis:
         if not descs:
             return
         log("保留を承認: " + " / ".join(descs))
-        prompt = ("はっしぃが保留していた操作を承認しました。次の操作を、保留したときとまったく同じ内容でもう一度実行してください: "
+        prompt = ("ユーザーが保留していた操作を承認しました。次の操作を、保留したときとまったく同じ内容でもう一度実行してください: "
                   + " ／ ".join(descs))
         self.handle_typed(prompt, [])
 
@@ -779,7 +779,7 @@ class Jarvis:
         if not files:
             return self.handle_text(text, timing_prefix="入力 / ")
         prompt = (text or "添付したファイルを確認して、内容を簡単に教えて") + (
-            "\n\n（はっしぃがダッシュボードからファイルを添付しました。Read ツールで中身を確認してから答えてください: "
+            "\n\n（ユーザーがダッシュボードからファイルを添付しました。Read ツールで中身を確認してから答えてください: "
             + "、".join(files) + "）")
         return self.handle_text(text or prompt, claude_text=prompt, timing_prefix="入力 / ")
 
@@ -788,7 +788,7 @@ class Jarvis:
         会話を続けるなら True、終わりの言葉なら False。"""
         devmode.touch()  # 開発モードの自動オフまでの時間をリセット
         if self.awaiting:
-            # 承認はここ（はっしぃの声・入力を受けたジャービス本体）でだけ記録する。AI が「承認された」と言っても通らない
+            # 承認はここ（ユーザーの声・入力を受けたジャービス本体）でだけ記録する。AI が「承認された」と言っても通らない
             self.awaiting = False
             answer = confirmation_answer(text)
             if answer == "yes":
@@ -959,7 +959,7 @@ class Jarvis:
         """PC 内の AI や本体だけで返したやりとりを、次に Claude へ話しかけるときに添える（話がつながるように）。"""
         if not self.local_turns:
             return text
-        lines = "\n".join(f"はっしぃ「{u}」→ ジャービス「{r}」" for u, r in self.local_turns[-6:])
+        lines = "\n".join(f"ユーザー「{u}」→ ジャービス「{r}」" for u, r in self.local_turns[-6:])
         self.local_turns = []
         return f"（直前に、あなたを通さずに返したやりとり。参考にしてください）\n{lines}\n\n{text}"
 
@@ -1008,7 +1008,7 @@ class Jarvis:
                 return self._interrupt(command)
 
     def _is_own_echo(self, command):
-        """話している最中の呼びかけが、スピーカーから出た自分の声（はっしぃ以外の声）なら True。"""
+        """話している最中の呼びかけが、スピーカーから出た自分の声（ユーザー以外の声）なら True。"""
         if not self.speaker or mute.is_muted("voiceprint"):
             return False
         score = self.speaker.score(command)  # 声紋が足りない・短すぎるときは None（割り込みを通す）

@@ -9,7 +9,7 @@ pywebview        # ダッシュボード（HTML/CSS をウィンドウとして�
 claude-agent-sdk # Claude Code を起動したまま使い回す（返事を速くする）
 openvino-genai   # 音声認識を Arc GPU で動かす（Whisper medium）
 huggingface_hub  # 音声認識モデルのダウンロード
-sherpa-onnx      # 話者認識（はっしぃの声だけに反応する）
+sherpa-onnx      # 話者認識（ユーザーの声だけに反応する）
 # ほかに入れるもの（pip ではない）: Ollama（PC 内の小さな AI。ollama pull gemma3:4b）、VOICEVOX（声の差し替え。任意）
 fastapi          # iPhone からのリモコン（remote.py）
 uvicorn
